@@ -2,24 +2,29 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
-const jwt = require("jsonwebtoken");
+// const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 8000;
 
 // middlewares
 app.use(cors());
 app.use(express.json());
+console.log(process.env.DB_USER);
 
-
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const uri = "mongodb+srv://admin:<password>@cluster0.qbydxwz.mongodb.net/?retryWrites=true&w=majority";
+// Database Connection
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.twtll.mongodb.net/?retryWrites=true&w=majority`;
+console.log(uri);
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-client.connect(err => {
-  const collection = client.db("test").collection("devices");
-  // perform actions on the collection object
-  client.close();
-});
 
+async function run() {
+  try {
+
+    console.log("Database Connected...");
+  } finally {
+  }
+}
+
+run().catch((err) => console.error(err));
 
 app.get("/", (req, res) => {
   res.send("Server is running...");
