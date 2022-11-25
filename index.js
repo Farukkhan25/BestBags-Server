@@ -42,6 +42,14 @@ async function run() {
       res.send(allCategories);
     });
 
+    // Get individual Category
+    app.get("/categories/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const category = await cetegoriesCollection.findOne(query);
+      res.send(category);
+    });
+
     console.log("Database Connected...");
   } finally {
   }
