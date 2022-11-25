@@ -34,6 +34,14 @@ async function run() {
       res.send(allProducts);
     });
 
+    // Get individual Product by ID
+    app.get("/products/:id", async (req, res) => {
+      const productId = req.params.id;
+      const cursor = productsCollection.find({ id: productId });
+      const productDetails = await cursor.toArray();
+      res.send(productDetails);
+    });
+
     // Get all Categories
     app.get("/categories", async (req, res) => {
       const query = {};
