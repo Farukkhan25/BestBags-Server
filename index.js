@@ -122,6 +122,29 @@ async function run() {
       res.send(users);
     });
 
+    // get my-products
+    app.get('/myproducts', async (req, res) => {
+      // console.log(req.query.email);
+      let query = {};
+      if (req.query.email) {
+        query = {
+          sellerEmail: req.query.email,
+        };
+      }
+      const cursor = productsCollection.find(query).sort({ _id: -1 });
+      const products = await cursor.toArray();
+      res.send(products);
+      // console.log(products);
+    })
+
+    // delete my-products
+    app.delete("/myproducts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await productsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     console.log("Database Connected...");
   } finally {
   }
