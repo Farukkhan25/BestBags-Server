@@ -25,6 +25,8 @@ async function run() {
   try {
     const cetegoriesCollection = client.db("bestBags").collection("categories");
     const productsCollection = client.db("bestBags").collection("products");
+    const usersCollection = client.db("bestBags").collection("users");
+    const bookingsCollection = client.db("bestBags").collection("bookings");
 
     // Get all Products
     app.get("/products", async (req, res) => {
@@ -56,6 +58,68 @@ async function run() {
       const query = { _id: ObjectId(id) };
       const category = await cetegoriesCollection.findOne(query);
       res.send(category);
+    });
+
+    // booking post
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+      console.log(result);
+    });
+
+    // get all bookings for user
+    app.get("/bookings", async (req, res) => {
+      let query = {};
+      const email = req.query.email;
+      if (email) {
+        query = {
+          buyerEmail: email,
+        };
+      }
+      const result = await bookingsCollection.find(query).toArray();
+      console.log(result);
+      res.send(result);
+    });
+
+    // save user email & generate jwt
+    app.put("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      console.log(user);
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: user,
+      };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      // const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+      //   expiresIn: "7d",
+      // });
+      res.send({  result });
+    });
+
+     app.post("/users", async (req, res) => {
+       const user = req.body;
+       console.log(user);
+       const result = await usersCollection.insertOne(user);
+       res.send(result);
+     });
+
+    // get individual user role
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      console.log(user);
+      res.send(user);
+    });
+
+    // get all user
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const users = await userCollection.find(query).toArray();
+      res.send(users);
     });
 
     console.log("Database Connected...");
