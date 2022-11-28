@@ -21,12 +21,37 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+}
+
 async function run() {
   try {
     const cetegoriesCollection = client.db("bestBags").collection("categories");
     const productsCollection = client.db("bestBags").collection("products");
     const usersCollection = client.db("bestBags").collection("users");
     const bookingsCollection = client.db("bestBags").collection("bookings");
+
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "7d",
+      });
+      res.send({ token });
+    });
 
     // Get all Products
     app.get("/products", async (req, res) => {
@@ -42,6 +67,14 @@ async function run() {
       const cursor = productsCollection.find({ id: productId });
       const productDetails = await cursor.toArray();
       res.send(productDetails);
+    });
+
+    // add product
+    app.post("/products", async (req, res) => {
+      const productData = req.body;
+      // console.log(productData)
+      const results = await productsCollection.insertOne(productData);
+      res.send(results);
     });
 
     // Get all Categories
@@ -93,18 +126,20 @@ async function run() {
         $set: user,
       };
       const result = await userCollection.updateOne(filter, updateDoc, options);
+      // Token
       // const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
       //   expiresIn: "7d",
       // });
-      res.send({  result });
+
+      res.send({ result });
     });
 
-     app.post("/users", async (req, res) => {
-       const user = req.body;
-       console.log(user);
-       const result = await usersCollection.insertOne(user);
-       res.send(result);
-     });
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
     // get individual user role
     app.get("/users/:email", async (req, res) => {
@@ -118,12 +153,21 @@ async function run() {
     // get all user
     app.get("/users", async (req, res) => {
       const query = {};
-      const users = await userCollection.find(query).toArray();
+      const users = await usersCollection.find(query).toArray();
       res.send(users);
     });
 
+    // delete users
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // get my-products
-    app.get('/myproducts', async (req, res) => {
+    app.get("/myproducts", async (req, res) => {
       // console.log(req.query.email);
       let query = {};
       if (req.query.email) {
@@ -135,11 +179,12 @@ async function run() {
       const products = await cursor.toArray();
       res.send(products);
       // console.log(products);
-    })
+    });
 
     // delete my-products
     app.delete("/myproducts/:id", async (req, res) => {
       const id = req.params.id;
+      console.log(id);
       const query = { _id: ObjectId(id) };
       const result = await productsCollection.deleteOne(query);
       res.send(result);
@@ -148,6 +193,7 @@ async function run() {
     console.log("Database Connected...");
   } finally {
   }
+
 }
 
 run().catch((err) => console.error(err));
