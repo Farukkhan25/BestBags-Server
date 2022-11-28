@@ -2,7 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
-// const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 8000;
 
@@ -44,6 +45,9 @@ async function run() {
     const productsCollection = client.db("bestBags").collection("products");
     const usersCollection = client.db("bestBags").collection("users");
     const bookingsCollection = client.db("bestBags").collection("bookings");
+    const paymentsCollection = client.db("bestBags").collection("payments");
+    const advertisesCollection = client.db("bestBags").collection("advertises");
+
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -77,6 +81,14 @@ async function run() {
       res.send(results);
     });
 
+    // add advertise
+    app.post("/advertises", async (req, res) => {
+      const advertiseData = req.body;
+      console.log(advertiseData)
+      const results = await advertisesCollection.insertOne(advertiseData);
+      res.send(results);
+    });
+
     // Get all Categories
     app.get("/categories", async (req, res) => {
       const query = {};
@@ -93,12 +105,47 @@ async function run() {
       res.send(category);
     });
 
-    // booking post
+    // Post booking
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
       console.log(result);
+    });
+
+    // Payment
+     app.post("/create-payment-intent", async (req, res) => {
+       const booking = req.body;
+       const resalePrice = booking.resalePrice;
+       const amount = resalePrice * 100;
+
+       const paymentIntent = await stripe.paymentIntents.create({
+         currency: "usd",
+         amount: amount,
+         "payment_method_types": ["card"],
+       });
+       res.send({
+         clientSecret: paymentIntent.client_secret,
+       });
+     });
+
+    
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentsCollection.insertOne(payment);
+      const id = payment.bookingId;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const updatedResult = await bookingsCollection.updateOne(
+        filter,
+        updatedDoc
+      );
+      res.send(result);
     });
 
     // get all bookings for user
@@ -113,6 +160,14 @@ async function run() {
       const result = await bookingsCollection.find(query).toArray();
       console.log(result);
       res.send(result);
+    });
+
+    // Get booking by id
+    app.get("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const booking = await bookingsCollection.findOne(query);
+      res.send(booking);
     });
 
     // save user email & generate jwt
